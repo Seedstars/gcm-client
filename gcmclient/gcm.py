@@ -14,7 +14,6 @@
 
 import random
 import requests
-import six
 
 try:
     import json
@@ -36,10 +35,10 @@ class Message(object):
     """ Base message class. """
     # recognized options, read GCM manual for more info.
     OPTIONS = {
-        'collapse_key': lambda v: v if isinstance(v, six.string_types) else str(v),
+        'collapse_key': lambda v: v if isinstance(v, str) else str(v),
         'time_to_live': int,
         'delay_while_idle': bool,
-        'restricted_package_name': lambda v: v if isinstance(v, six.string_types) else str(v),
+        'restricted_package_name': lambda v: v if isinstance(v, str) else str(v),
         'dry_run': bool,
     }
 
@@ -75,12 +74,12 @@ class Message(object):
         payload = {}
 
         # set options
-        for opt, flt in six.iteritems(self.OPTIONS):
+        for opt, flt in self.OPTIONS.items():
             val = options.get(opt, None)
             if val is not None:
                 val = flt(val)
 
-            if val or isinstance(val, (int, six.integer_types)):
+            if val or isinstance(val, int):
                 payload[opt] = val
 
         self._prepare_data(payload, data=data)
@@ -88,11 +87,11 @@ class Message(object):
 
     def _prepare(self, headers, data=None, options=None):
         """ Prepare message for HTTP request.
-        
+
             The method should at least set 'Content-Type' header.  If message
             is using URL encoding (plain-text HTTP request), then method should
             return key-value pairs in a dict.
-        
+
             Arguments:
                 headers (dict): HTTP headers.
 
@@ -149,13 +148,9 @@ class JSONMessage(Message):
 
     def _parse_response(self, response):
         """ Parse JSON response. """
-        if not isinstance(response, six.string_types):
+        if not isinstance(response, str):
             # requests.Response object
-            #response = response.content
-            # Encoding issue, on python 3.3, when deserializing the response.content (bytes).
-            # Deserializing the text worked. A better solution will be to solve the encoding
-            # problem.
-            response = response.text
+            response = response.content.decode("utf-8")
 
         data = json.loads(response) # raises ValueError
         if 'results' not in data or len(data.get('results')) != len(self.registration_ids):
@@ -197,7 +192,7 @@ class JSONMessage(Message):
 
             If you use ``pickle``, then simply pickle/unpickle the message object.
             If you use something else, like JSON, then::
-                
+
                 # obtain state dict from message
                 state = message.__getstate__()
                 # send/store the state
@@ -212,11 +207,11 @@ class JSONMessage(Message):
             ret.update(self.options)
 
         return ret
-    
+
     def __setstate__(self, state):
         """ Overwrite message state with given kwargs. """
         self.options = {}
-        for key, val in six.iteritems(state):
+        for key, val in state.items():
             if key == 'registration_ids':
                 self._registration_ids = val
             elif key == 'data':
@@ -252,7 +247,7 @@ class PlainTextMessage(Message):
         """ Prepare data key-value pairs for URL encoding. """
         data = data or self.data
         if data:
-            for k,v in six.iteritems(data):
+            for k,v in data.items():
                 if v is not None:
                     # FIXME: maybe we should check here if v is scalar. URL encoding
                     # does not support complex values.
@@ -271,7 +266,7 @@ class PlainTextMessage(Message):
         not_registered = []
         errors = {}
 
-        if not isinstance(response, six.string_types):
+        if not isinstance(response, str):
             # requests.Response object
             response = response.content
 
@@ -313,7 +308,7 @@ class PlainTextMessage(Message):
 
             If you use ``pickle``, then simply pickle/unpickle the message object.
             If you use something else, like JSON, then::
-                
+
                 # obtain state dict from message
                 state = message.__getstate__()
                 # send/store the state
@@ -328,11 +323,11 @@ class PlainTextMessage(Message):
             ret.update(self.options)
 
         return ret
-    
+
     def __setstate__(self, state):
         """ Overwrite message state with given kwargs. """
         self.options = {}
-        for key, val in six.iteritems(state):
+        for key, val in state.items():
             if key == 'registration_id':
                 self._registration_id = val
             elif key == 'data':
@@ -342,14 +337,14 @@ class PlainTextMessage(Message):
 
 class Result(object):
     """ Result of send operation.
-    
+
         You should check :func:`canonical` for any registration ID's that
         should be updated. If the whole message or some registration ID's have
         recoverably failed, then :func:`retry` will provide you with new
         message. You have to wait :func:`delay` seconds before attempting a new
         request.
     """
-    
+
     def __init__(self, message, response, backoff):
         self.message = message
         self._random = None
@@ -478,7 +473,7 @@ class GCM(object):
 
     def send(self, message):
         """ Send message.
-            
+
             The message may contain various options, such as ``time_to_live``.
             Your request might be rejected, because some of your options might
             be invalid. In this case a ``ValueError`` with explanation will be

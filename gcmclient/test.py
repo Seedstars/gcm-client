@@ -84,35 +84,34 @@ class GCMClientTest(unittest.TestCase):
 
     def test_json_message(self):
         msg = JSONMessage(['A', 'B', 'C', 'D', 'E'],
-            {
-                'str': 'string',
-                'int': 90,
-                'bool': True,
-            }, 
-            collapse_key='collapse.key',
-            time_to_live=90,
-            delay_while_idle=True,
-            dry_run=True)
+                {
+                    'str': 'string',
+                    'int': 90,
+                    'bool': True,
+                }, collapse_key='collapse.key',
+                   time_to_live=90,
+                   delay_while_idle=True,
+                   dry_run=True)
 
         headers = {}
         data = msg._prepare(headers)
 
         # will be URL encoded by requests
-        ex_data = {
-            'collapse_key': 'collapse.key',
-            'delay_while_idle': True,
-            'registration_ids': ['A', 'B', 'C', 'D', 'E'],
-            'data': {
-                'str': 'string',
-                'int': 90,
-                'bool': True,
-            },
-            'time_to_live': 90,
-            'dry_run': True
-        }
+        ex_data = json.dumps({'collapse_key': 'collapse.key',
+                    'time_to_live': 90,
+                    'delay_while_idle': True,
+                    'dry_run': True,
+                    'registration_ids': ['A', 'B', 'C', 'D', 'E'],
+                    'data': {
+                        'str': 'string',
+                        'int': 90,
+                        'bool': True,
+                    }
+                   })
 
         ex_headers = {'Content-Type': 'application/json'}
-        self.assertEqual(json.loads(data), ex_data)
+
+        self.assertEqual(data, ex_data)
         self.assertEqual(headers, ex_headers)
 
         # responses
@@ -132,10 +131,10 @@ class GCMClientTest(unittest.TestCase):
         rsp = msg._parse_response(response)
         ex_rsp = {
             'multicast_id': 1,
-            'canonicals': {'D': u'32'},
-            'failed': {'C': u'InvalidRegistration'},
+            'canonicals': {'D': '32'},
+            'failed': {'C': 'InvalidRegistration'},
             'not_registered': ['E'],
-            'success': {'A': u'1:0408', 'D': u'1:2342'},
+            'success': {'A': '1:0408', 'D': '1:2342'},
             'unavailable': ['B']
         }
         self.assertEqual(rsp, ex_rsp)
